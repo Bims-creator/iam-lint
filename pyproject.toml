@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iam-lint"
+version = "0.1.0"
+description = "Static analysis for AWS IAM policy documents — catches wildcard grants, unrestricted PassRole, and other least-privilege violations before they reach production."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Bimbo" }]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+include = ["iam_lint*"]
