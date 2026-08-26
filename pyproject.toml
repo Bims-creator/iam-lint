@@ -14,5 +14,8 @@ authors = [{ name = "Bimbo" }]
 [project.optional-dependencies]
 dev = ["pytest"]
 
+[project.scripts]
+iam-lint = "iam_lint.cli:main"
+
 [tool.setuptools.packages.find]
 include = ["iam_lint*"]
