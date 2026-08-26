@@ -268,3 +268,43 @@ def test_missing_mfa_not_flagged_for_unrelated_action():
     findings = lint_policy(policy)
     rules = {f["rule"] for f in findings}
     assert "MISSING_MFA_CONDITION" not in rules
+
+
+# --- New for this session: severity levels ---
+
+def test_full_admin_severity_is_critical():
+    policy = {"Statement": [{"Effect": "Allow", "Action": "*", "Resource": "*"}]}
+    findings = lint_policy(policy)
+    by_rule = {f["rule"]: f["severity"] for f in findings}
+    assert by_rule["FULL_ADMIN_ACCESS"] == "critical"
+
+
+def test_wildcard_action_severity_is_high():
+    policy = {"Statement": [{"Effect": "Allow", "Action": "*", "Resource": "arn:aws:s3:::bucket/*"}]}
+    findings = lint_policy(policy)
+    assert findings[0]["severity"] == "high"
+
+
+def test_missing_mfa_severity_is_medium():
+    policy = {
+        "Statement": [
+            {"Effect": "Allow", "Action": "iam:PassRole", "Resource": "arn:aws:iam::111122223333:role/app-role"}
+        ]
+    }
+    findings = lint_policy(policy)
+    by_rule = {f["rule"]: f["severity"] for f in findings}
+    assert by_rule["MISSING_MFA_CONDITION"] == "medium"
+
+
+def test_every_finding_has_a_valid_severity():
+    policy = {
+        "Statement": [
+            {"Effect": "Allow", "Action": "*", "Resource": "*"},
+            {"Effect": "Allow", "Action": "iam:CreateAccessKey", "Resource": "*"},
+            {"Effect": "Allow", "Principal": "*", "Action": "sts:AssumeRole", "Resource": "arn:aws:iam::111122223333:role/app-role"},
+        ]
+    }
+    findings = lint_policy(policy)
+    assert len(findings) > 0
+    for finding in findings:
+        assert finding["severity"] in {"critical", "high", "medium"}

@@ -37,7 +37,8 @@ def format_human(findings):
         rule_name = finding.get("rule", "UNKNOWN_RULE")
         statement_index = finding.get("statement_index", "UNKNOWN_INDEX")
         message = finding.get("message", "No message provided.")
-        lines.append(f"[{rule_name}] statement {statement_index}: {message}")
+        severity = finding.get("severity", "UNKNOWN_SEVERITY")
+        lines.append(f"[{severity.upper()}] [{rule_name}] statement {statement_index}: {message}")
 
     return "\n".join(lines)
 

@@ -5,7 +5,9 @@ lint_policy() takes a parsed IAM policy document (identity-based policy
 JSON, already loaded into a dict) and returns a list of findings, each
 shaped as:
 
-    {"statement_index": int, "rule": str, "message": str}
+    {"statement_index": int, "rule": str, "severity": str, "message": str}
+
+severity is one of "critical", "high", "medium" — see RULE_SEVERITY below.
 """
 
 
@@ -17,6 +19,25 @@ ESCALATION_ACTIONS = {
 }
 
 MFA_SENSITIVE_ACTIONS = ESCALATION_ACTIONS | {"iam:PassRole"}
+
+RULE_SEVERITY = {
+    "FULL_ADMIN_ACCESS": "critical",
+    "PRIVILEGE_ESCALATION_RISK": "critical",
+    "WILDCARD_PRINCIPAL": "critical",
+    "WILDCARD_ACTION": "high",
+    "WILDCARD_RESOURCE": "high",
+    "PASSROLE_UNRESTRICTED": "high",
+    "MISSING_MFA_CONDITION": "medium",
+}
+
+
+def make_finding(index, rule, message):
+    return {
+        "statement_index": index,
+        "rule": rule,
+        "severity": RULE_SEVERITY[rule],
+        "message": message,
+    }
 
 
 def normalize_actions(statement):
@@ -106,52 +127,45 @@ def lint_policy(policy):
         resource_wildcard = has_wildcard(resources)
 
         if action_wildcard:
-            findings.append({
-                "statement_index": index,
-                "rule": "WILDCARD_ACTION",
-                "message": "Action includes \"*\", granting every action.",
-            })
+            findings.append(make_finding(
+                index, "WILDCARD_ACTION",
+                "Action includes \"*\", granting every action.",
+            ))
 
         if resource_wildcard:
-            findings.append({
-                "statement_index": index,
-                "rule": "WILDCARD_RESOURCE",
-                "message": "Resource includes \"*\", applying account-wide.",
-            })
+            findings.append(make_finding(
+                index, "WILDCARD_RESOURCE",
+                "Resource includes \"*\", applying account-wide.",
+            ))
 
         if "iam:PassRole" in actions and resource_wildcard:
-            findings.append({
-                "statement_index": index,
-                "rule": "PASSROLE_UNRESTRICTED",
-                "message": "iam:PassRole is not restricted to a specific role ARN.",
-            })
+            findings.append(make_finding(
+                index, "PASSROLE_UNRESTRICTED",
+                "iam:PassRole is not restricted to a specific role ARN.",
+            ))
 
         if action_wildcard and resource_wildcard:
-            findings.append({
-                "statement_index": index,
-                "rule": "FULL_ADMIN_ACCESS",
-                "message": "Action and Resource are both \"*\", granting unrestricted admin access.",
-            })
+            findings.append(make_finding(
+                index, "FULL_ADMIN_ACCESS",
+                "Action and Resource are both \"*\", granting unrestricted admin access.",
+            ))
 
         if any(action in ESCALATION_ACTIONS for action in actions) and resource_wildcard:
-            findings.append({
-                "statement_index": index,
-                "rule": "PRIVILEGE_ESCALATION_RISK",
-                "message": "Action allows privilege escalation (create keys, attach policies, or assume roles) without a resource restriction.",
-            })
+            findings.append(make_finding(
+                index, "PRIVILEGE_ESCALATION_RISK",
+                "Action allows privilege escalation (create keys, attach policies, or assume roles) without a resource restriction.",
+            ))
 
         if has_wildcard(normalize_principal_values(statement)):
-            findings.append({
-                "statement_index": index,
-                "rule": "WILDCARD_PRINCIPAL",
-                "message": "Principal is not restricted — this grants access to anyone.",
-            })
+            findings.append(make_finding(
+                index, "WILDCARD_PRINCIPAL",
+                "Principal is not restricted — this grants access to anyone.",
+            ))
 
         if any(action in MFA_SENSITIVE_ACTIONS for action in actions) and not has_mfa_condition(statement):
-            findings.append({
-                "statement_index": index,
-                "rule": "MISSING_MFA_CONDITION",
-                "message": "Sensitive action is allowed without requiring MFA (aws:MultiFactorAuthPresent).",
-            })
+            findings.append(make_finding(
+                index, "MISSING_MFA_CONDITION",
+                "Sensitive action is allowed without requiring MFA (aws:MultiFactorAuthPresent).",
+            ))
 
     return findings

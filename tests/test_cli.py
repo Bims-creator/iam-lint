@@ -11,18 +11,24 @@ def test_format_human_no_findings():
 
 def test_format_human_single_finding():
     findings = [
-        {"statement_index": 0, "rule": "WILDCARD_ACTION", "message": "Action includes \"*\", granting every action."}
+        {
+            "statement_index": 0,
+            "rule": "WILDCARD_ACTION",
+            "severity": "high",
+            "message": "Action includes \"*\", granting every action.",
+        }
     ]
     output = format_human(findings)
     assert "WILDCARD_ACTION" in output
+    assert "HIGH" in output
     assert "statement 0" in output
     assert "Action includes" in output
 
 
 def test_format_human_multiple_findings_one_per_line():
     findings = [
-        {"statement_index": 0, "rule": "WILDCARD_ACTION", "message": "msg1"},
-        {"statement_index": 1, "rule": "WILDCARD_RESOURCE", "message": "msg2"},
+        {"statement_index": 0, "rule": "WILDCARD_ACTION", "severity": "high", "message": "msg1"},
+        {"statement_index": 1, "rule": "WILDCARD_RESOURCE", "severity": "high", "message": "msg2"},
     ]
     output = format_human(findings)
     lines = output.strip().split("\n")
